@@ -38,8 +38,9 @@ public class VertxRunner {
     setupLogging();
     PlatformManager pm = PlatformLocator.factory.createPlatformManager();
     deployAll(pm,args);
+    //pm.undeployAll(null);
     Thread.currentThread().join();
-
+    
   }
 
   public static PlatformManager deployAll(PlatformManager pm, String... names) {
