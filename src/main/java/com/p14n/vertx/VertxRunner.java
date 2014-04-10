@@ -13,6 +13,9 @@ import java.net.URL;
 import java.util.Properties;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
+import org.apache.log4j.Level;
+import com.hazelcast.config.*;
+import org.vertx.java.spi.cluster.impl.hazelcast.ProgrammableClusterManagerFactory;
 
 /**
  * Created by Dean Pehrsson-Chapman
@@ -20,23 +23,40 @@ import java.util.concurrent.CountDownLatch;
  */
 public class VertxRunner {
 
+  public static void cluster(int port,String... ips){
+
+    Config cfg = new Config();
+    ProgrammableClusterManagerFactory.setConfig(cfg);
+    System.setProperty("vertx.clusterManagerFactory", ProgrammableClusterManagerFactory.class.getName());
+
+    NetworkConfig network = cfg.getNetworkConfig();
+    network.setPort(port);
+    network.setPortAutoIncrement(false);
+    Join join = network.getJoin();
+    join.getMulticastConfig().setEnabled(false);
+    for(String ip:ips){
+      join.getTcpIpConfig().addMember(ip);
+    }
+    join.getTcpIpConfig().setEnabled(true);
+
+  }
+    
   private static void setupLogging() {
-    Properties p = new Properties();
-    p.setProperty("log4j.rootLogger", "TRACE,console");
-    p.setProperty("log4j.appender.console", ConsoleAppender.class.getName());
-    p.setProperty("log4j.appender.console.Target", "System.out");
-    p.setProperty("log4j.appender.console.layout", "org.apache.log4j.PatternLayout");
-    PropertyConfigurator.configure(p);
+    LoggingSetup.setupLogging("colqo.log","arch/colqo.log%d",Level.DEBUG);
     System.setProperty(
             "org.vertx.logger-delegate-factory-class-name",
-            "org.vertx.java.core.logging.impl.Log4jLogDelegateFactory"
+            "org.vertx.java.core.logging.impl.SLF4JLogDelegateFactory"
     );
   }
-
+    
   public static void main(String args[]) throws BrokenBarrierException, InterruptedException {
 
     setupLogging();
-    PlatformManager pm = PlatformLocator.factory.createPlatformManager();
+
+    //PlatformManager pm = PlatformLocator.factory.createPlatformManager();
+    cluster(5900);
+
+    PlatformManager pm = PlatformLocator.factory.createPlatformManager(5900, "::1");
     deployAll(pm,args);
     //pm.undeployAll(null);
     Thread.currentThread().join();
